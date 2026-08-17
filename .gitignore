@@ -25,3 +25,4 @@ backend/chroma_db/
 chroma_db/
 **/chroma_db/
 
+*.md
