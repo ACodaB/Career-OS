@@ -23,6 +23,12 @@ export default function JobsPage() {
   const [matchError, setMatchError] = useState(null)
   const pollRef = useRef(null)
 
+  // Phase 3 — application generation state
+  const [generatingJobId, setGeneratingJobId] = useState(null)
+  const [generateErrors, setGenerateErrors] = useState({})
+  const [expandedJobId, setExpandedJobId] = useState(null)
+  const [copiedField, setCopiedField] = useState(null)
+
   useEffect(() => {
     if (activeCompanies.length > 0) {
       setCompanies(activeCompanies.join(', '))
@@ -110,6 +116,48 @@ export default function JobsPage() {
   const handleShowAll = () => {
     setActiveCompanies([])
     localStorage.removeItem(LAST_SEARCH_KEY)
+  }
+
+  // ---- Phase 3: generate tailored resume + cover letter ----
+
+  const handleGenerateApplication = async (jobId) => {
+    setGeneratingJobId(jobId)
+    setGenerateErrors((prev) => {
+      const next = { ...prev }
+      delete next[jobId]
+      return next
+    })
+
+    try {
+      const res = await fetch(`${API_BASE}/jobs/${jobId}/generate-application`, {
+        method: 'POST',
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setGenerateErrors((prev) => ({ ...prev, [jobId]: data.detail || 'Generation failed.' }))
+      } else {
+        loadJobs()
+        setExpandedJobId(jobId)
+      }
+    } catch {
+      setGenerateErrors((prev) => ({
+        ...prev,
+        [jobId]: 'Generation failed — is the backend running?',
+      }))
+    } finally {
+      setGeneratingJobId(null)
+    }
+  }
+
+  const handleCopy = async (text, fieldKey) => {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopiedField(fieldKey)
+      setTimeout(() => setCopiedField(null), 1500)
+    } catch {
+      // Clipboard API can fail on non-HTTPS/non-localhost contexts; silently ignore,
+      // the text is still visible and selectable for manual copy.
+    }
   }
 
   const visibleJobs =
@@ -200,6 +248,11 @@ export default function JobsPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {visibleJobs.map((j) => {
             const rec = RECOMMENDATION_LABELS[j.match_recommendation]
+            const hasApplication = Boolean(j.application_generated_at)
+            const isGenerating = generatingJobId === j.id
+            const isExpanded = expandedJobId === j.id
+            const genError = generateErrors[j.id]
+
             return (
               <div key={j.id} style={{ border: '1px solid #ddd', borderRadius: 8, padding: 12 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -213,9 +266,92 @@ export default function JobsPage() {
                 <div style={{ color: '#666', fontSize: 14 }}>
                   {j.company} {j.location && `· ${j.location}`}
                 </div>
-                <a href={j.url} target="_blank" rel="noreferrer" style={{ fontSize: 13 }}>
-                  View posting →
-                </a>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8, flexWrap: 'wrap' }}>
+                  <a href={j.url} target="_blank" rel="noreferrer" style={{ fontSize: 13 }}>
+                    View posting →
+                  </a>
+                  <button
+                    onClick={() => handleGenerateApplication(j.id)}
+                    disabled={isGenerating}
+                    style={{ fontSize: 13 }}
+                  >
+                    {isGenerating
+                      ? 'Generating...'
+                      : hasApplication
+                      ? 'Regenerate Application'
+                      : 'Generate Application'}
+                  </button>
+                  {hasApplication && (
+                    <button
+                      onClick={() => setExpandedJobId(isExpanded ? null : j.id)}
+                      style={{ fontSize: 13, background: 'none', border: 'none', color: '#0645AD', cursor: 'pointer', padding: 0 }}
+                    >
+                      {isExpanded ? 'Hide application' : 'View application'}
+                    </button>
+                  )}
+                </div>
+
+                {genError && (
+                  <p style={{ color: 'crimson', fontSize: 13, marginTop: 6 }}>{genError}</p>
+                )}
+
+                {isExpanded && hasApplication && (
+                  <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <h4 style={{ margin: '0 0 6px' }}>Tailored Resume</h4>
+                        <button
+                          onClick={() => handleCopy(j.tailored_resume, `resume-${j.id}`)}
+                          style={{ fontSize: 12 }}
+                        >
+                          {copiedField === `resume-${j.id}` ? 'Copied!' : 'Copy'}
+                        </button>
+                      </div>
+                      <pre
+                        style={{
+                          whiteSpace: 'pre-wrap',
+                          background: '#fafafa',
+                          border: '1px solid #eee',
+                          borderRadius: 6,
+                          padding: 10,
+                          fontSize: 13,
+                          fontFamily: 'inherit',
+                          maxHeight: 300,
+                          overflowY: 'auto',
+                        }}
+                      >
+                        {j.tailored_resume}
+                      </pre>
+                    </div>
+
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <h4 style={{ margin: '0 0 6px' }}>Cover Letter</h4>
+                        <button
+                          onClick={() => handleCopy(j.tailored_cover_letter, `cover-${j.id}`)}
+                          style={{ fontSize: 12 }}
+                        >
+                          {copiedField === `cover-${j.id}` ? 'Copied!' : 'Copy'}
+                        </button>
+                      </div>
+                      <pre
+                        style={{
+                          whiteSpace: 'pre-wrap',
+                          background: '#fafafa',
+                          border: '1px solid #eee',
+                          borderRadius: 6,
+                          padding: 10,
+                          fontSize: 13,
+                          fontFamily: 'inherit',
+                          maxHeight: 300,
+                          overflowY: 'auto',
+                        }}
+                      >
+                        {j.tailored_cover_letter}
+                      </pre>
+                    </div>
+                  </div>
+                )}
               </div>
             )
           })}

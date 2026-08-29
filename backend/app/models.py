@@ -46,3 +46,8 @@ class Job(Base):
     match_percent: Mapped[int] = mapped_column(default=0)
     match_recommendation: Mapped[str] = mapped_column(String(50), default="")
     match_reasoning: Mapped[dict] = mapped_column(JSON, default=dict)
+    
+    # Application prep fields (filled in during Phase 3) — nullable until then
+    tailored_resume: Mapped[str] = mapped_column(Text, default="")
+    tailored_cover_letter: Mapped[str] = mapped_column(Text, default="")
+    application_generated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)

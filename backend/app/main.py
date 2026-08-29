@@ -15,6 +15,7 @@ from app.models import UserProfile, Job
 from app.config import settings
 from app.services.job_sync import sync_greenhouse_companies
 from app.services.matching import match_all_jobs
+from app.services.application_prep import generate_application
 
 # Creates tables on startup if they don't exist yet (fine for SQLite/dev;
 # swap for a real migration tool like Alembic later if needed).
@@ -72,9 +73,11 @@ def upsert_profile(payload: ProfileIn, db: Session = Depends(get_db)):
 # ---- Jobs ----
 
 @app.get("/jobs")
-def list_jobs(db: Session = Depends(get_db)):
-    jobs = db.query(Job).order_by(Job.created_at.desc()).all()
-    return jobs
+def list_jobs(limit: int | None = None, db: Session = Depends(get_db)):
+    query = db.query(Job).order_by(Job.created_at.desc())
+    if limit:
+        query = query.limit(limit)
+    return query.all()
 
 
 class SyncJobsIn(BaseModel):
@@ -120,3 +123,21 @@ def run_matching(payload: MatchJobsIn = MatchJobsIn(), db: Session = Depends(get
         return result
     finally:
         _matching_lock.release()
+
+@app.post("/jobs/{job_id}/generate-application")
+def generate_application_endpoint(job_id: int, db: Session = Depends(get_db)):
+    job = db.query(Job).filter(Job.id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found.")
+
+    profile = db.query(UserProfile).first()
+    if not profile:
+        raise HTTPException(status_code=400, detail="No profile found. Create a profile first.")
+
+    try:
+        updated_job = generate_application(db, job, profile)
+    except ValueError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    return updated_job
+

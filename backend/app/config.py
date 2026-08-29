@@ -2,10 +2,12 @@
 Central app configuration, loaded from environment variables / .env file.
 """
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pathlib import Path
 
+ENV_FILE = Path(__file__).resolve().parent.parent / ".env"
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(env_file=ENV_FILE,env_file_encoding="utf-8", extra="ignore")
 
     # Database
     # Defaults to a local SQLite file so the app runs with zero extra setup.
@@ -15,8 +17,10 @@ class Settings(BaseSettings):
 
     # LLM + embeddings (Gemini covers both, so this is the only AI key you need)
     gemini_api_key: str = ""
-    gemini_model: str = "gemini-2.5-flash"
-    gemini_embedding_model: str = "text-embedding-004"
+    groq_api_key: str = ""
+    groq_model: str = "openai/gpt-oss-120b"
+    # gemini_model: str = "gemini-3.7-flash"
+    gemini_embedding_model: str = "gemini-embedding-001"
 
     # Vector store (Chroma persists to disk here)
     chroma_persist_dir: str = "./chroma_data"
