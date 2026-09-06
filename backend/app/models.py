@@ -3,7 +3,9 @@ SQLAlchemy models. Starting with just what Phase 1 (profile + job search)
 needs. More tables (Match, Application, Preference, CompanyBrief,
 InterviewSession) get added in later phases per the implementation plan.
 """
-from datetime import datetime
+from datetime import datetime, timezone
+from sqlalchemy import ForeignKey
+from sqlalchemy.orm import relationship
 
 from sqlalchemy import String, Text, DateTime, JSON
 from sqlalchemy.orm import Mapped, mapped_column
@@ -51,3 +53,21 @@ class Job(Base):
     tailored_resume: Mapped[str] = mapped_column(Text, default="")
     tailored_cover_letter: Mapped[str] = mapped_column(Text, default="")
     application_generated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
+
+class Application(Base):
+    __tablename__ = "applications"
+
+    id : Mapped[int] = mapped_column(primary_key=True, index=True)
+    job_id : Mapped[int] = mapped_column(ForeignKey("jobs.id"), nullable=False)
+    company : Mapped[str] = mapped_column(String(50),nullable=False)
+    title : Mapped[str] = mapped_column(String(50),nullable=False)
+    resume_snapshot : Mapped[str] = mapped_column(Text, nullable=False)
+    cover_letter_snapshot : Mapped[str] = mapped_column(Text, nullable=False)
+    status : Mapped[str] = mapped_column(String(15),nullable=False, default="Submitted")
+    submitted_at : Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.now(timezone.utc))
+    updated_at : Mapped[datetime] = mapped_column(
+        DateTime, nullable=False,
+        default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc)
+    )
+
+    job = relationship("Job", backref="applications")

@@ -10,7 +10,7 @@ const RECOMMENDATION_LABELS = {
   weak_match: { label: 'Weak match', color: '#888' },
 }
 
-export default function JobsPage() {
+export default function JobsPage({ submittedJobIds, onApplicationChange }) {
   const [jobs, setJobs] = useState([])
   const [companies, setCompanies] = useState('')
   const [activeCompanies, setActiveCompanies] = useState(() => {
@@ -28,6 +28,12 @@ export default function JobsPage() {
   const [generateErrors, setGenerateErrors] = useState({})
   const [expandedJobId, setExpandedJobId] = useState(null)
   const [copiedField, setCopiedField] = useState(null)
+
+  // Phase 4 — editable review + submit state
+  const [editedResume, setEditedResume] = useState({})       // { [jobId]: text }
+  const [editedCoverLetter, setEditedCoverLetter] = useState({}) // { [jobId]: text }
+  const [submittingJobId, setSubmittingJobId] = useState(null)
+  const [submitErrors, setSubmitErrors] = useState({})
 
   useEffect(() => {
     if (activeCompanies.length > 0) {
@@ -136,6 +142,18 @@ export default function JobsPage() {
       if (!res.ok) {
         setGenerateErrors((prev) => ({ ...prev, [jobId]: data.detail || 'Generation failed.' }))
       } else {
+        // Regeneration should discard any in-progress edits for this job,
+        // since the underlying generated content just changed.
+        setEditedResume((prev) => {
+          const next = { ...prev }
+          delete next[jobId]
+          return next
+        })
+        setEditedCoverLetter((prev) => {
+          const next = { ...prev }
+          delete next[jobId]
+          return next
+        })
         loadJobs()
         setExpandedJobId(jobId)
       }
@@ -157,6 +175,55 @@ export default function JobsPage() {
     } catch {
       // Clipboard API can fail on non-HTTPS/non-localhost contexts; silently ignore,
       // the text is still visible and selectable for manual copy.
+    }
+  }
+
+  // ---- Phase 4: expand + edit + submit ----
+
+  const handleToggleExpand = (job) => {
+    if (expandedJobId === job.id) {
+      setExpandedJobId(null)
+      return
+    }
+    setExpandedJobId(job.id)
+    setEditedResume((prev) =>
+      prev[job.id] !== undefined ? prev : { ...prev, [job.id]: job.tailored_resume }
+    )
+    setEditedCoverLetter((prev) =>
+      prev[job.id] !== undefined ? prev : { ...prev, [job.id]: job.tailored_cover_letter }
+    )
+  }
+
+  const handleSubmitApplication = async (jobId) => {
+    setSubmittingJobId(jobId)
+    setSubmitErrors((prev) => {
+      const next = { ...prev }
+      delete next[jobId]
+      return next
+    })
+
+    try {
+      const res = await fetch(`${API_BASE}/jobs/${jobId}/submit-application`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tailored_resume: editedResume[jobId] ?? '',
+          tailored_cover_letter: editedCoverLetter[jobId] ?? '',
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setSubmitErrors((prev) => ({ ...prev, [jobId]: data.detail || 'Submit failed.' }))
+      } else {
+        onApplicationChange() // tells App.jsx to refetch /applications, syncing both tabs
+      }
+    } catch {
+      setSubmitErrors((prev) => ({
+        ...prev,
+        [jobId]: 'Submit failed — is the backend running?',
+      }))
+    } finally {
+      setSubmittingJobId(null)
     }
   }
 
@@ -252,6 +319,9 @@ export default function JobsPage() {
             const isGenerating = generatingJobId === j.id
             const isExpanded = expandedJobId === j.id
             const genError = generateErrors[j.id]
+            const isSubmitting = submittingJobId === j.id
+            const submitError = submitErrors[j.id]
+            const isSubmitted = submittedJobIds.has(j.id)
 
             return (
               <div key={j.id} style={{ border: '1px solid #ddd', borderRadius: 8, padding: 12 }}>
@@ -283,7 +353,7 @@ export default function JobsPage() {
                   </button>
                   {hasApplication && (
                     <button
-                      onClick={() => setExpandedJobId(isExpanded ? null : j.id)}
+                      onClick={() => handleToggleExpand(j)}
                       style={{ fontSize: 13, background: 'none', border: 'none', color: '#0645AD', cursor: 'pointer', padding: 0 }}
                     >
                       {isExpanded ? 'Hide application' : 'View application'}
@@ -299,56 +369,82 @@ export default function JobsPage() {
                   <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 16 }}>
                     <div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <h4 style={{ margin: '0 0 6px' }}>Tailored Resume</h4>
+                        <h4 style={{ margin: '0 0 6px' }}>Tailored Resume (editable)</h4>
                         <button
-                          onClick={() => handleCopy(j.tailored_resume, `resume-${j.id}`)}
+                          onClick={() => handleCopy(editedResume[j.id] ?? '', `resume-${j.id}`)}
                           style={{ fontSize: 12 }}
                         >
                           {copiedField === `resume-${j.id}` ? 'Copied!' : 'Copy'}
                         </button>
                       </div>
-                      <pre
+                      <textarea
+                        value={editedResume[j.id] ?? j.tailored_resume}
+                        onChange={(e) =>
+                          setEditedResume((prev) => ({ ...prev, [j.id]: e.target.value }))
+                        }
                         style={{
-                          whiteSpace: 'pre-wrap',
+                          width: '100%',
+                          boxSizing: 'border-box',
                           background: '#fafafa',
+                          color: '#111',
                           border: '1px solid #eee',
                           borderRadius: 6,
                           padding: 10,
                           fontSize: 13,
                           fontFamily: 'inherit',
-                          maxHeight: 300,
-                          overflowY: 'auto',
+                          minHeight: 220,
+                          resize: 'vertical',
                         }}
-                      >
-                        {j.tailored_resume}
-                      </pre>
+                      />
                     </div>
 
                     <div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <h4 style={{ margin: '0 0 6px' }}>Cover Letter</h4>
+                        <h4 style={{ margin: '0 0 6px' }}>Cover Letter (editable)</h4>
                         <button
-                          onClick={() => handleCopy(j.tailored_cover_letter, `cover-${j.id}`)}
+                          onClick={() => handleCopy(editedCoverLetter[j.id] ?? '', `cover-${j.id}`)}
                           style={{ fontSize: 12 }}
                         >
                           {copiedField === `cover-${j.id}` ? 'Copied!' : 'Copy'}
                         </button>
                       </div>
-                      <pre
+                      <textarea
+                        value={editedCoverLetter[j.id] ?? j.tailored_cover_letter}
+                        onChange={(e) =>
+                          setEditedCoverLetter((prev) => ({ ...prev, [j.id]: e.target.value }))
+                        }
                         style={{
-                          whiteSpace: 'pre-wrap',
+                          width: '100%',
+                          boxSizing: 'border-box',
                           background: '#fafafa',
+                          color: '#111',
                           border: '1px solid #eee',
                           borderRadius: 6,
                           padding: 10,
                           fontSize: 13,
                           fontFamily: 'inherit',
-                          maxHeight: 300,
-                          overflowY: 'auto',
+                          minHeight: 220,
+                          resize: 'vertical',
                         }}
+                      />
+                    </div>
+
+                    <div>
+                      <p style={{ fontSize: 12, color: '#666', margin: '0 0 6px' }}>
+                        Submit the application yourself on the company's site first, using the
+                        text above (edit it if you like), then confirm here to save it to your
+                        tracker.
+                      </p>
+                      <button
+                        onClick={() => handleSubmitApplication(j.id)}
+                        disabled={isSubmitting || isSubmitted}
+                        style={isSubmitted ? { color: '#0a7d2c', borderColor: '#0a7d2c' } : undefined}
                       >
-                        {j.tailored_cover_letter}
-                      </pre>
+                        {isSubmitting ? 'Saving...' : isSubmitted ? '✓ Submitted' : 'Confirm & Mark Submitted'}
+                      </button>
+                      {submitError && (
+                        <p style={{ color: 'crimson', fontSize: 13, marginTop: 6 }}>{submitError}</p>
+                      )}
                     </div>
                   </div>
                 )}

@@ -19,3 +19,4 @@ _jobs_collection = _client.get_or_create_collection(
 
 def get_jobs_collection():
     return _jobs_collection
+    

@@ -8,10 +8,11 @@ from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
+from datetime import datetime, timezone
 import threading
 
 from app.db import Base, engine, get_db
-from app.models import UserProfile, Job
+from app.models import UserProfile, Job, Application
 from app.config import settings
 from app.services.job_sync import sync_greenhouse_companies
 from app.services.matching import match_all_jobs
@@ -141,3 +142,84 @@ def generate_application_endpoint(job_id: int, db: Session = Depends(get_db)):
 
     return updated_job
 
+class SubmitApplicationRequest(BaseModel):
+    tailored_resume: str
+    tailored_cover_letter: str
+
+
+class UpdateApplicationStatusRequest(BaseModel):
+    status: str
+
+
+VALID_APPLICATION_STATUSES = {"Submitted", "OA Pending", "Interview", "Rejected"}
+
+
+@app.post("/jobs/{job_id}/submit-application")
+def submit_application(job_id: int, payload: SubmitApplicationRequest, db: Session = Depends(get_db)):
+    job = db.query(Job).filter(Job.id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    existing = db.query(Application).filter(Application.job_id == job_id).first()
+
+    if existing:
+        # Resubmitting the same job updates the existing tracked record
+        # instead of creating a duplicate. Status is intentionally left
+        # as-is (don't reset progress like "Interview" back to "Submitted"
+        # just because the resume text was re-saved).
+        existing.resume_snapshot = payload.tailored_resume
+        existing.cover_letter_snapshot = payload.tailored_cover_letter
+        existing.updated_at = datetime.utcnow()
+        db.commit()
+        db.refresh(existing)
+        return existing
+
+    application = Application(
+        job_id=job.id,
+        company=job.company,
+        title=job.title,
+        resume_snapshot=payload.tailored_resume,
+        cover_letter_snapshot=payload.tailored_cover_letter,
+        status="Submitted",
+        submitted_at=datetime.utcnow(),
+    )
+    db.add(application)
+    db.commit()
+    db.refresh(application)
+    return application
+
+
+@app.get("/applications")
+def list_applications(db: Session = Depends(get_db)):
+    return db.query(Application).order_by(Application.submitted_at.desc()).all()
+
+
+@app.patch("/applications/{application_id}/status")
+def update_application_status(
+    application_id: int, payload: UpdateApplicationStatusRequest, db: Session = Depends(get_db)
+):
+    if payload.status not in VALID_APPLICATION_STATUSES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"status must be one of {sorted(VALID_APPLICATION_STATUSES)}",
+        )
+
+    application = db.query(Application).filter(Application.id == application_id).first()
+    if not application:
+        raise HTTPException(status_code=404, detail="Application not found")
+
+    application.status = payload.status
+    application.updated_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(application)
+    return application
+
+@app.delete("/applications/{application_id}")
+def delete_application(application_id: int, db: Session = Depends(get_db)):
+    application = db.query(Application).filter(Application.id == application_id).first()
+    if not application:
+        raise HTTPException(status_code=404, detail="Application not found")
+
+    db.delete(application)
+    db.commit()
+    return {"deleted": True, "id": application_id}
