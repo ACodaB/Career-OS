@@ -1,14 +1,9 @@
 """
-SQLAlchemy models. Starting with just what Phase 1 (profile + job search)
-needs. More tables (Match, Application, Preference, CompanyBrief,
-InterviewSession) get added in later phases per the implementation plan.
+SQLAlchemy models.
 """
 from datetime import datetime, timezone
-from sqlalchemy import ForeignKey
-from sqlalchemy.orm import relationship
-
-from sqlalchemy import String, Text, DateTime, JSON
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import relationship, backref, Mapped, mapped_column
+from sqlalchemy import String, Text, DateTime, JSON, ForeignKey
 
 from app.db import Base
 
@@ -25,7 +20,7 @@ class UserProfile(Base):
     education: Mapped[str] = mapped_column(Text, default="")  # free text for now
     resume_text: Mapped[str] = mapped_column(Text, default="")  # full resume, pasted in
     skills: Mapped[str] = mapped_column(Text, default="")  # comma-separated for now
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(timezone.utc))
 
 
 class Job(Base):
@@ -42,7 +37,7 @@ class Job(Base):
     source: Mapped[str] = mapped_column(String(100), default="")
     posted_at: Mapped[str] = mapped_column(String(100), default="")
     raw_data: Mapped[dict] = mapped_column(JSON, default=dict)  # keep raw payload for later reuse
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(timezone.utc))
 
     # Match fields (filled in during Phase 2) — nullable until then
     match_percent: Mapped[int] = mapped_column(default=0)
@@ -71,3 +66,23 @@ class Application(Base):
     )
 
     job = relationship("Job", backref="applications")
+
+class InterviewSession(Base):
+    __tablename__ = "interview_sessions"
+
+    id : Mapped[int] = mapped_column(primary_key=True, index=True)
+    application_id : Mapped[int] = mapped_column(ForeignKey("applications.id"), nullable=False)
+    interview_type : Mapped[str] = mapped_column(String(15), nullable=False)  # "behavioral" | "technical" | "resume"
+    questions : Mapped[str] = mapped_column(Text, nullable=False)          # JSON-encoded list[str] from the prep call
+    transcript : Mapped[str] = mapped_column(Text, nullable=False, default="[]")  # JSON-encoded list[{role, content}]
+    evaluation : Mapped[str] = mapped_column(Text, nullable=True)          # JSON-encoded final eval, filled when status flips to completed
+    status : Mapped[str] = mapped_column(String, nullable=False, default="in_progress")  # "in_progress" | "completed"
+    created_at : Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.now(timezone.utc))
+    updated_at : Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.now(timezone.utc),
+                                                   onupdate=datetime.now(timezone.utc))
+
+    application = relationship(
+        "Application",
+        backref=backref("interview_sessions", cascade="all, delete-orphan"),
+    )
+    

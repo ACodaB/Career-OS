@@ -10,13 +10,18 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from datetime import datetime, timezone
 import threading
+import json
 
 from app.db import Base, engine, get_db
-from app.models import UserProfile, Job, Application
+from app.models import UserProfile, Job, Application, InterviewSession
 from app.config import settings
 from app.services.job_sync import sync_greenhouse_companies
 from app.services.matching import match_all_jobs
 from app.services.application_prep import generate_application
+from app.services.interview_prep import (
+    generate_questions, VALID_TYPES, get_state, process_answer,
+    finish_session, start_question, skip_question,
+)
 
 # Creates tables on startup if they don't exist yet (fine for SQLite/dev;
 # swap for a real migration tool like Alembic later if needed).
@@ -169,7 +174,7 @@ def submit_application(job_id: int, payload: SubmitApplicationRequest, db: Sessi
         # just because the resume text was re-saved).
         existing.resume_snapshot = payload.tailored_resume
         existing.cover_letter_snapshot = payload.tailored_cover_letter
-        existing.updated_at = datetime.utcnow()
+        existing.updated_at = datetime.now(timezone.utc)
         db.commit()
         db.refresh(existing)
         return existing
@@ -181,7 +186,7 @@ def submit_application(job_id: int, payload: SubmitApplicationRequest, db: Sessi
         resume_snapshot=payload.tailored_resume,
         cover_letter_snapshot=payload.tailored_cover_letter,
         status="Submitted",
-        submitted_at=datetime.utcnow(),
+        submitted_at=datetime.now(timezone.utc),
     )
     db.add(application)
     db.commit()
@@ -223,3 +228,168 @@ def delete_application(application_id: int, db: Session = Depends(get_db)):
     db.delete(application)
     db.commit()
     return {"deleted": True, "id": application_id}
+
+
+class InterviewPrepRequest(BaseModel):
+    interview_type: str  # "behavioral" | "technical" | "resume"
+
+# ---Interview-prep---
+@app.post("/applications/{application_id}/interview-prep")
+def interview_prep(application_id: int, body: InterviewPrepRequest, db: Session = Depends(get_db)):
+    if body.interview_type not in VALID_TYPES:
+        raise HTTPException(status_code=400, detail=f"interview_type must be one of {sorted(VALID_TYPES)}")
+
+    application = db.query(Application).filter(Application.id == application_id).first()
+    if not application:
+        raise HTTPException(status_code=404, detail="Application not found")
+
+    existing = (
+    db.query(InterviewSession)
+    .filter(
+        InterviewSession.application_id == application.id,
+        InterviewSession.interview_type == body.interview_type,
+        InterviewSession.status == "in_progress",
+    )
+    .order_by(InterviewSession.updated_at.desc())
+    .first()
+    )
+    if existing:
+        return {
+            "session_id": existing.id,
+            "interview_type": existing.interview_type,
+            "questions": json.loads(existing.questions),
+            "reused": True,
+        }
+
+    try:
+        questions = generate_questions(application.job, application.resume_snapshot, body.interview_type)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Question generation failed: {e}")
+
+    session = InterviewSession(
+        application_id=application.id,
+        interview_type=body.interview_type,
+        questions=json.dumps(questions),
+        transcript="[]",
+    )
+    db.add(session)
+    db.commit()
+    db.refresh(session)
+
+    return {"session_id": session.id, "interview_type": session.interview_type, "questions": questions}
+
+class AnswerRequest(BaseModel):
+    answer: str
+
+
+@app.get("/interview-sessions/{session_id}")
+def get_interview_session(session_id: int, db: Session = Depends(get_db)):
+    session = db.query(InterviewSession).filter(InterviewSession.id == session_id).first()
+    if not session:
+        raise HTTPException(status_code=404, detail="Interview session not found")
+    return get_state(session)
+
+
+
+@app.post("/interview-sessions/{session_id}/finish")
+def finish_interview_session(session_id: int, db: Session = Depends(get_db)):
+    session = db.query(InterviewSession).filter(InterviewSession.id == session_id).first()
+    if not session:
+        raise HTTPException(status_code=404, detail="Interview session not found")
+
+    try:
+        evaluation = finish_session(session, session.application.job)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Final evaluation failed: {e}")
+
+    db.commit()
+    return evaluation
+
+
+class QuestionPick(BaseModel):
+    question_index: int
+
+
+def _get_session_or_404(db: Session, session_id: int) -> InterviewSession:
+    session = db.query(InterviewSession).filter(InterviewSession.id == session_id).first()
+    if not session:
+        raise HTTPException(status_code=404, detail="Interview session not found")
+    return session
+
+
+@app.get("/interview-sessions")
+def list_interview_sessions(db: Session = Depends(get_db)):
+    sessions = db.query(InterviewSession).order_by(InterviewSession.updated_at.desc()).all()
+    out = []
+    for s in sessions:
+        if not s.application:  # application was undone/deleted; hide orphaned sessions
+            continue
+        state = get_state(s)
+        out.append({
+            "session_id": s.id,
+            "application_id": s.application_id,
+            "company": s.application.company,
+            "title": s.application.title,
+            "interview_type": s.interview_type,
+            "status": s.status,
+            "answered_count": state["answered_count"],
+            "total_questions": state["total_questions"],
+            "updated_at": s.updated_at.isoformat() if s.updated_at else None,
+        })
+    return out
+
+
+@app.post("/interview-sessions/{session_id}/start-question")
+def start_interview_question(session_id: int, body: QuestionPick, db: Session = Depends(get_db)):
+    session = _get_session_or_404(db, session_id)
+    if session.status == "completed":
+        raise HTTPException(status_code=409, detail="This session is completed")
+    try:
+        state = start_question(session, body.question_index)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    db.commit()
+    return state
+
+
+@app.post("/interview-sessions/{session_id}/skip-question")
+def skip_interview_question(session_id: int, body: QuestionPick, db: Session = Depends(get_db)):
+    session = _get_session_or_404(db, session_id)
+    if session.status == "completed":
+        raise HTTPException(status_code=409, detail="This session is completed")
+    try:
+        state = skip_question(session, body.question_index)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    db.commit()
+    return state
+
+
+@app.post("/interview-sessions/{session_id}/answer")
+def answer_interview_question(session_id: int, body: AnswerRequest, db: Session = Depends(get_db)):
+    if not body.answer.strip():
+        raise HTTPException(status_code=400, detail="Answer cannot be empty")
+
+    session = _get_session_or_404(db, session_id)
+    if session.status == "completed":
+        raise HTTPException(status_code=409, detail="This session is completed")
+    if get_state(session)["active_question_index"] is None:
+        raise HTTPException(status_code=409, detail="No active question. Pick a question first.")
+
+    application = session.application
+    try:
+        result = process_answer(session, application.job, application.resume_snapshot, body.answer.strip())
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Evaluation failed: {e}")
+
+    db.commit()
+    return result
+
+@app.delete("/interview-sessions/{session_id}")
+def delete_interview_session(session_id: int, db: Session = Depends(get_db)):
+    session = _get_session_or_404(db, session_id)
+    db.delete(session)
+    db.commit()
+    return {"deleted": True}

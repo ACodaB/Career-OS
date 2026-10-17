@@ -15,7 +15,7 @@ pattern already used in matching.py.
 """
 import json
 import time
-from datetime import datetime
+from datetime import datetime,timezone
 
 from sqlalchemy.orm import Session
 
@@ -130,7 +130,7 @@ def generate_application(db: Session, job: Job, profile: UserProfile) -> Job:
 
     job.tailored_resume = tailored_resume
     job.tailored_cover_letter = cover_letter
-    job.application_generated_at = datetime.utcnow()
+    job.application_generated_at = datetime.now(timezone.utc)
 
     db.commit()
     db.refresh(job)

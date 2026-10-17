@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import ProfilePage from './ProfilePage'
 import JobsPage from './JobsPage'
 import ApplicationsPage from './ApplicationsPage'
+import InterviewPage from './InterviewPage'
 import './App.css'
 
 const API_BASE = 'http://localhost:8000'
@@ -33,6 +34,9 @@ function App() {
         <button onClick={() => setTab('applications')} style={{ fontWeight: tab === 'applications' ? 'bold' : 'normal' }}>
           Applications
         </button>
+        <button onClick={() => setTab('interview')} style={{ fontWeight: tab === 'applications' ? 'bold' : 'normal' }}>
+          Interviews
+        </button>
         <button onClick={() => setTab('profile')} style={{ fontWeight: tab === 'profile' ? 'bold' : 'normal' }}>
           Profile
         </button>
@@ -43,6 +47,7 @@ function App() {
       {tab === 'applications' && (
         <ApplicationsPage applications={applications} setApplications={setApplications} />
       )}
+      {tab === 'interview' && <InterviewPage applications={applications} apiBase={API_BASE} />}
       {tab === 'profile' && <ProfilePage />}
     </div>
   )
