@@ -37,7 +37,7 @@ INITIAL_BACKOFF_SECONDS = 2.0
 
 
 def _build_prompt(job: Job, profile: UserProfile) -> str:
-    return f"""Candidate resume (source of truth — do not invent anything not in here):
+    return f"""Candidate resume (LaTeX source; the ONLY source of facts about the candidate. Do not invent anything that is not in here):
 ---
 {profile.resume_text}
 ---
@@ -54,10 +54,32 @@ Description:
 
 Produce a JSON object with exactly two keys:
 
-"tailored_resume": a plain-text, ATS-friendly rewrite of the candidate's resume
-content (summary + bullet points) reordered and reworded to foreground the
-experience most relevant to this job. Keep it grounded strictly in facts present
-in the source resume above. Use "\\n" for line breaks within the string.
+"tailored_resume": the candidate's resume tailored to this job, written in the plain-text
+"resume markup" described below (NOT LaTeX). It is turned into a PDF that must look like
+the source resume, so follow this format exactly:
+- Do NOT include the name, contact line, or header links. They are added automatically.
+- Start every section with "## " followed by the section title, using the same section
+  titles and the same order as the source (for example Experience, Skills, Projects,
+  Education, Achievements, Certifications).
+- An entry heading (a job, project, or degree) is one line: "### Left text | Right text",
+  for example "### AI Intern -- Company | Jul 2026 – Aug 2026" or
+  "### Project Name | AI/ML Developer".
+- Bullets start with "- ". Use **double asterisks** for bold (a bullet's lead-in label and
+  its key metrics, as in the source) and *single asterisks* for italics. A second line
+  inside the same bullet goes on its own line, indented by two spaces.
+- In the Skills section write one line per category, like "Languages: Python, C/C++, SQL".
+  Reorder the items within a line so the ones most relevant to this job come first. Only
+  list skills that appear in the source.
+- Other lines under an entry (such as Tech Stack or GitHub) are plain lines, for example
+  "**Tech Stack:** Python, SQL" and "**GitHub:** github.com/ACodaB/Automl-project".
+  Copy link text EXACTLY as written in the source so it becomes a clickable link.
+- Plain text only: no LaTeX commands or backslashes. Write % and & normally and use an
+  en dash (–) for ranges.
+- Tailor by putting the most relevant bullets, projects and skills first and lightly
+  rewording with the job's own vocabulary. You may drop the least relevant bullets or
+  entries to keep the length close to the source. Keep every number, date, employer,
+  title and degree exactly as in the source. Never invent anything.
+- Use "\\n" for line breaks within the string.
 
 "cover_letter": a complete, ready-to-send cover letter (3-4 short paragraphs) for
 this specific job at this specific company, written in first person, referencing

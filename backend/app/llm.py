@@ -20,7 +20,20 @@ from app.config import settings
 _groq_client = Groq(api_key=settings.groq_api_key)
 _gemini_client = genai.Client(api_key=settings.gemini_api_key)
  
- 
+# Output budget for Groq calls. The model is a reasoning model, so its
+# "thinking" tokens count against the same limit as the answer. A full
+# tailored resume + cover letter in one JSON object needs real headroom.
+MAX_OUTPUT_TOKENS = 8192
+
+
+def _generation_kwargs() -> dict:
+    kwargs = {"max_completion_tokens": MAX_OUTPUT_TOKENS}
+    # Only gpt-oss models accept reasoning_effort; skip it for other models.
+    if "gpt-oss" in settings.groq_model:
+        kwargs["extra_body"] = {"reasoning_effort": "low"}
+    return kwargs
+
+
 def generate_text(prompt: str, system_instruction: str | None = None) -> str:
     """Simple text-in, text-out call. Used for cover letters, company briefs, etc."""
     messages = []
@@ -31,6 +44,7 @@ def generate_text(prompt: str, system_instruction: str | None = None) -> str:
     response = _groq_client.chat.completions.create(
         model=settings.groq_model,
         messages=messages,
+        **_generation_kwargs()
     )
     return response.choices[0].message.content
  
@@ -63,6 +77,7 @@ def generate_json(prompt: str, system_instruction: str | None = None) -> str:
         model=settings.groq_model,
         messages=messages,
         response_format={"type": "json_object"},
+        **_generation_kwargs()
     )
     return response.choices[0].message.content
  
@@ -78,3 +93,11 @@ def embed_text(text: str) -> list[float]:
         contents=text,
     )
     return response.embeddings[0].values
+
+def embed_texts(texts: list[str]) -> list[list[float]]:
+    """Batch version of embed_text: one API call for many texts."""
+    response = _gemini_client.models.embed_content(
+        model=settings.gemini_embedding_model,
+        contents=texts,
+    )
+    return [e.values for e in response.embeddings]

@@ -11,61 +11,78 @@ const userProfile = {
   skills: 'Python, C/C++, SQL, JavaScript, Java, HTML, CSS, Scikit-learn, Pandas, NumPy, Matplotlib, OpenCV, Hugging Face Transformers, PaddleOCR, Ultralytics YOLO, Gemini API, Git, GitHub, VS Code, Streamlit, Optuna, FastAPI, Langchain, Machine Learning, Deep Learning, NLP, Transformers, LLMs, Computer Vision, OCR',
   resume_text: `ARSH BAJAJ
 Delhi, India | +91-8882856610 | arsh29bajaj@gmail.com
-GitHub: https://github.com/ACodaB | LeetCode: https://leetcode.com/u/arsh29bajaj/ | LinkedIn: https://www.linkedin.com/in/arsh-bajaj
-
-EXPERIENCE:
-AI Intern - Decimal Technologies Pvt. Ltd. (Jul 2026 - Aug 2026)
-- Building intelligent document processing pipelines using Computer Vision and OCR techniques for automated information extraction.
-- Developing OCR workflows by integrating YOLO-based text detection with PaddleOCR for structured text extraction and post-processing.
-- Integrating AI models using FastAPI to develop scalable inference APIs for deployment.
-- Working with modern NLP concepts including tokenization, word embeddings, ANNs, RNNs, LSTMs, GRUs, and Transformer architectures.
-- Studying and implementing attention mechanisms, positional encoding, encoder-decoder architectures, and concepts from the Attention Is All You Need paper.
-- Contributing to experimentation, evaluation, debugging, and optimization of AI models for production-oriented applications.
-
-ML Content Intern - SmaranAI (Oct 2025 - Nov 2025)
-- Created 20+ hands-on Machine Learning assignments covering supervised learning, NLP, feature engineering, and model evaluation.
-- Developed structured educational resources and technical documentation for beginner and intermediate Machine Learning learners.
-- Designed practical exercises and explanatory content to simplify complex ML concepts and improve learner engagement.
-- Authored study material that improved learning efficiency by approximately 30% through well-structured examples and assignments.
-
-SKILLS:
-- Languages: Python, C/C++, SQL, JavaScript, Java, HTML, CSS
-- ML & AI: Scikit-learn, Pandas, NumPy, Matplotlib, OpenCV, Hugging Face Transformers, PaddleOCR, Ultralytics YOLO, Gemini API, TensorFlow, PyTorch
-- Tools: Git, GitHub, VS Code, Streamlit, Optuna, FASTAPI, Google Cloud, Kubernetes, Docker, MS Azure, Langchain, Langgraph, Django, Flask
-- Concepts: Machine Learning, Deep Learning, NLP, Transformers, LLMs, Tokenization, Word Embeddings, Attention Mechanism, ANN, CNN, RNN, LSTM, GRU, OCR, Computer Vision, Feature Engineering, Hyperparameter Optimization, Model Deployment
-
-PROJECTS:
-AutoML Pipeline System | AI/ML Developer
-- Built a modular AutoML pipeline automating preprocessing, feature engineering, feature selection, and model training.
-- Reduced manual experimentation effort by 40-50% through workflow automation and Optuna-based hyperparameter tuning.
-- Developed experiment tracking and deployment-ready prediction modules for reproducible ML workflows.
-- Tech Stack: Python, Scikit-learn, Pandas, NumPy, Optuna, Streamlit
-- GitHub: github.com/ACodaB/Automl-project
-
-SkillForge - AI-powered Team & Skill Matching Platform | AI/ML Developer
-- Designed an AI-powered compatibility scoring system for intelligent team formation using skill and preference analysis.
-- Developed recommendation workflows tested with 20+ users, reducing manual team pairing time by 50%.
-- Implemented backend APIs and collaborative workflow features for scalable multi-user coordination.
-- Tech Stack: Python, NLP, Scikit-learn, Pandas, REST API, Node.js
-- GitHub: github.com/AniAgg-5964/Skill-Forge
-
-Smart India Hackathon (PS-25032) | AI/ML Developer
-- Processed and analyzed 500+ tourist review entries using NLP preprocessing and sentiment classification techniques.
-- Developed sentiment-based recommendation workflows for tourism itinerary optimization.
-- Improved chatbot recommendations for promoting cultural and eco-tourism in Jharkhand.
-- Tech Stack: Python, NLP, Scikit-learn, Pandas
-- GitHub: github.com/RacTCode/Jharkhand-Tourism
-
-EDUCATION:
-- B.Tech in Computer Science and Engineering, USICT, GGSIPU (Expected May 2028 | CGPA: 8.97/10 till 4th semester)
-- Senior Secondary (Class XII) - 96.4% | Class X - 89%
-
-ACHIEVEMENTS & CERTIFICATIONS:
-- HackCrux V2 - Hackathon Finalist (EchoLoop)
-- Vedathon Ideathon - Top 10 Finalist among 2000+ participants (SkillForge)
-- Anthropic Certifications: Building with Claude API, AI Fluency Framework & Foundations, Claude 101, Claude Code in Action
-- Goldman Sachs Software Engineering Job Simulation
-- Machine Learning with Python by Acmegrade under IIT Bombay`,
+https://github.com/ACodaB | https://leetcode.com/u/arsh29bajaj/ | https://www.linkedin.com/in/arsh-bajaj
+Experience
+AI Intern – Decimal Technologies Pvt. Ltd. Jul 2026 – Aug 2026
+• Automated Intelligent Document Processing: Engineered end-to-end vision OCR pipelines integrating
+YOLOv8 text detection with PaddleOCR, reducing manual document data entry time by 65% while
+boosting extraction accuracy to 94%.
+• Scaled High-Throughput Inference APIs: Deployed containerized AI models using FastAPI and Docker,
+improving API throughput by 40% and maintaining sub-200ms response latencies under concurrent work-
+loads.
+• Optimized Enterprise Knowledge Retrieval (RAG): Architected RAG workflows utilizing custom chunking,
+vector indexing, and Google’s OKF structure, enhancing search retrieval precision by 35% over baseline
+keyword search.
+ML Content Intern – SmaranAI Oct 2025 – Nov 2025
+• Authoring Hands-On Technical Resources: Designed 20+ practical Machine Learning assignments and
+real-world project modules covering supervised learning, NLP, and model evaluation techniques.
+• Accelerating Concept Comprehension: Developed structured learning pathways that improved learner
+task completion speed by 30% and increased course retention rates among beginner and intermediate students.
+Skills
+Languages Python, C/C++, SQL, JavaScript, Java, HTML, CSS
+ML & AI Scikit-learn, Pandas, NumPy, Matplotlib, OpenCV, Scikit- learn, Hugging Face Transformers,
+PaddleOCR, Ultralytics YOLO, Gemini API, TensorFlow, PyTorch
+Tools Git, GitHub, VS Code, Streamlit, Optuna, FASTAPI Google Cloud, Kubernetes, Docker, MS
+Azure, Langchain, Langgraph, Django, Flask
+Concepts Machine Learning, Deep Learning, NLP, Transformers, LLMs, Tokenization, Word Embeddings,
+Attention Mechanism, ANN, CNN, RNN, LSTM, GRU, OCR, Computer Vision, Feature Engi-
+neering, Hyperparameter Optimization, Model Deployment
+Projects
+AutoML Pipeline System AI/ML Developer
+• Automated Hyperparameter Tuning: Architected an automated ML pipeline integrating automated fea-
+ture engineering and Optuna optimization, cutting manual experimentation effort by 45% across tabular
+datasets.
+• Streamlined Workflow & Deployment: Developed reproducible experiment tracking and a Streamlit dash-
+board, reducing model prototyping time from days to hours.
+• Tech Stack: Python, Scikit-learn, Optuna, Pandas, NumPy, Streamlit
+Tech Stack: Python, Scikit-learn, Pandas, NumPy, Optuna, Streamlit
+GitHub: github.com/ACodaB/Automl-project
+SkillForge – AI-powered Team & Skill Matching Platform AI/ML Developer
+• Algorithmic Team Formation: Built an AI-driven compatibility scoring engine using candidate skill embed-
+dings and semantic preference matching, reducing manual team pairing time by 50%.
+• Scalable API Integration: Implemented RESTful backend services and multi-user coordination features eval-
+uated across 20+ live test users with 90%+ matching satisfaction.
+• Tech Stack: Python, NLP, Scikit-learn, REST APIs, Node.js
+Tech Stack: Python, NLP, Scikit-learn, Pandas, REST API, Node.js
+GitHub: github.com/AniAgg-5964/Skill-Forge
+Smart India Hackathon (PS-25032) AI/ML Developer
+• Tourism Review Analytics Pipeline: Processed and classified 500+ unstructured traveler reviews using NLP
+sentiment techniques, improving recommendation relevance by 35% for eco-tourism itineraries.
+• Tech Stack: Python, NLP, Scikit-learn, Text Preprocessing
+Tech Stack: Python, NLP, Scikit-learn, Pandas
+GitHub: github.com/RacTCode/Jharkhand-Tourism
+Education
+B.Tech in Computer Science and Engineering Expected May 2028
+University School of Information, Communication & Technology (USICT), GGSIPU
+CGPA: 8.97/10 (till 4th semester)
+Relevant Coursework: Data Structures & Algorithms, Object-Oriented Programming, DBMS, Machine Learning and
+Artificial Intelligence, Software Engineering, System Design, NLP
+Senior Secondary March 2024
+Class XII (96.4%) | 2nd rank in non-medical, school topper | Member of Prefectorial Board
+Class X (89%)
+Achievements
+• Solved 120+ problems focusing on DSA on leetcode
+• HackCrux V2 – Hackathon Finalist
+Developed EchoLoop, an NLP-based digital reflection platform for emotional pattern analysis.
+• Vedathon Ideathon – Top 10 Finalist among 2000+ participants
+Presented SkillForge, an AI-powered team and skill matching platform.
+Certifications
+• Building with the Claude API by Anthropic
+• Certificate of Completion: AI Fluency Framework & Foundations by Anthropic
+• Certificate of completion: Claude 101 by Anthropic
+• Claude Code in Action by Anthropic
+• Goldman Sachs’s Software Engineering Job Simulation
+• Machine Learning with Python by Acmegrade under IIT Bombay`,
 }
 
 export default function ProfilePage() {
